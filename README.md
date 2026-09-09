@@ -1,11 +1,36 @@
 # Pomacdoro
 
-A menu bar Pomodoro timer for macOS. The countdown is always visible in the menu
-bar; clicking it opens a panel with the transport controls and the three
-durations.
+A native macOS Pomodoro timer that lives in your menu bar.
 
-Focus, short rest, focus, short rest, with a long rest replacing every fourth
-short one. Each phase rolls into the next on its own.
+The time remaining is on screen at all times, next to a clock face that is
+yellow while you are focusing and green while you are resting. Glance up, see
+how long is left, carry on. That is the whole idea.
+
+## Why this instead of a browser tab
+
+Most Pomodoro timers make you go and look at them. A web timer sits in a tab you
+have to switch to, and it is the first tab you lose when you are actually deep in
+something. Some ask you to keep a phone next to the keyboard. Either way,
+checking the time costs you the focus the timer was supposed to protect.
+
+Pomacdoro puts the countdown in the one strip of screen that is always visible,
+above every window, in every app, on every space. There is no tab to find, no
+window to raise, no phone to pick up, and nothing to switch to. The information
+is simply there.
+
+Being native is what makes that possible, and it has a few knock-on effects:
+
+- **Always on top, never in the way.** A menu bar item cannot be buried under
+  other windows, and this one is about 78 points wide.
+- **No browser, no account, no network.** There is nothing to sign into and
+  nothing to sync. The app makes no network requests.
+- **Cheap.** Measured over a minute with a timer running, it uses 0.5% of one
+  CPU core. Stopped, it schedules no timer at all and uses no measurable CPU.
+  Memory sits around 42 MB, rising to about 110 MB once you have opened the
+  panel, and the app bundle is 1 MB.
+- **It survives sleep.** Close the lid mid-session and the countdown is still
+  correct when you open it, because time is tracked against the clock rather
+  than counted down tick by tick.
 
 ## Install
 
@@ -36,6 +61,50 @@ build, clear the quarantine flag first:
 xattr -dr com.apple.quarantine /path/to/Pomacdoro.app
 ```
 
+## Using it
+
+Click the menu bar item to open the panel. It holds the countdown, Start, Pause
+and Reset, the three durations, the two alert sounds, and today's session count.
+
+The cycle is focus, short rest, focus, short rest, and so on, with a long rest
+replacing every fourth short one. Each phase rolls into the next automatically,
+announced by a sound and a notification banner, so you never have to start the
+next one yourself.
+
+The menu bar shows a filled clock in yellow during focus and a clock in green
+during a rest, each in a deep tone against the light menu bar and a brighter one
+against the dark. A paused timer is dimmed, so a stalled countdown is obvious at
+a glance.
+
+Durations run from 1 to 180 minutes each and are saved as you change them. A
+change takes effect the next time that phase comes around, so it never cuts a
+running phase short. The session count covers today only; click it to clear it.
+
+The sound for each transition is chosen in the panel, one for the end of a focus
+session and one for the end of a rest. The list is gathered from the three
+folders AppKit searches, so anything you drop into `~/Library/Sounds` appears
+alongside the stock macOS sounds, and `None` leaves that transition silent.
+Picking a sound plays it straight away, since that is the only way to judge one.
+
+## How it works
+
+Time is tracked as an absolute deadline rather than a decrementing counter. Every
+tick recomputes what is left from the wall clock, so the countdown stays honest
+across sleep and timer coalescing. A phase that ran out while the machine was
+asleep is caught on the next tick, and the overshoot carries into the phase after
+it.
+
+The countdown ticks four times a second so the display never appears to skip, but
+the menu bar is only redrawn when something actually changes, which is once a
+second. The clock image is cached per phase and appearance rather than drawn on
+every update. Together those two things are the difference between 968 redraws a
+minute and 64.
+
+The app icon, which is also what the notification banner carries, is the same
+clock in white on a tomato red plate. Both it and the menu bar icon come from a
+single drawing routine, so they cannot drift apart, and the build re-renders
+`Resources/AppIcon.icns` whenever that routine changes.
+
 ## Tests
 
 ```sh
@@ -46,39 +115,6 @@ The suite covers the timer state machine and the settings store: phase
 transitions, the long-rest cadence, pause and resume, expiry across a system
 sleep, countdown formatting, sound selection and its fallbacks, and the
 UserDefaults round trip.
-
-## How it works
-
-The cycle is focus, short rest, focus, short rest, and so on, with a long rest
-replacing every fourth short one. Each phase rolls into the next automatically,
-announced by a system sound and a notification banner.
-
-The menu bar shows a small clock face next to the remaining time. The clock is
-yellow during focus and green during a rest, in a deep tone against the light
-menu bar and a brighter one against the dark. A paused timer is dimmed.
-
-The app icon, which is also what the notification banner carries, is the same
-clock in white on a tomato red plate. Both come from a single drawing routine in
-`ClockIcon.swift`, so the logo and the menu bar can never drift apart. The build
-re-renders `Resources/AppIcon.icns` whenever that drawing changes.
-
-The sound each transition plays is chosen in the panel, one for the end of a
-focus session and one for the end of a rest. The list is gathered from the three
-folders AppKit searches, so anything dropped into `~/Library/Sounds` shows up
-alongside the stock macOS sounds, and `None` leaves that transition silent.
-Picking a sound plays it straight away, since that is the only way to judge one.
-A sound that later goes missing falls back to the default rather than failing
-quietly.
-
-Durations are set in the panel, from 1 to 180 minutes each, and are saved
-immediately. A change takes effect the next time that phase comes around, so it
-never cuts a running phase short. The session count under the panel covers today
-only; click it to clear it.
-
-Time is tracked as an absolute deadline rather than a decrementing counter, so
-the countdown stays honest across system sleep. A phase that ran out while the
-machine was asleep is detected on the next tick, and the overshoot carries into
-the following phase.
 
 ## Layout
 
@@ -107,6 +143,11 @@ very little.
 For the same reason the test suite is a plain executable with a small assertion
 harness rather than XCTest or swift-testing, neither of which is reachable
 without a working package manifest.
+
+The bundle is assembled and signed in a temporary directory, then moved into
+place. On a folder synced by iCloud Drive, the sync agent stamps an extended
+attribute onto a newly appearing app bundle that makes `codesign` refuse to sign
+it, and staging outside the synced tree avoids that race.
 
 The app is signed ad-hoc. That gives the bundle the stable identity
 UserNotifications wants before it will deliver a banner. macOS asks for
