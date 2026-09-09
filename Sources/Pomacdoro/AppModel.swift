@@ -131,10 +131,15 @@ final class AppModel: ObservableObject {
         min(max(minutes, Settings.minutesRange.lowerBound), Settings.minutesRange.upperBound)
     }
 
+    /// Assigns only what actually changed. A plain assignment to a @Published
+    /// property notifies observers whether or not the value differs, and this
+    /// runs four times a second, so unguarded writes cost sixteen menu bar
+    /// redraws a second to show a countdown that ticks once.
     private func refresh(now: Date) {
-        countdown = formatCountdown(core.remaining(at: now))
-        phase = core.phase
-        runState = core.state
-        sessions = core.completedFocusSessions
+        let text = formatCountdown(core.remaining(at: now))
+        if countdown != text { countdown = text }
+        if phase != core.phase { phase = core.phase }
+        if runState != core.state { runState = core.state }
+        if sessions != core.completedFocusSessions { sessions = core.completedFocusSessions }
     }
 }

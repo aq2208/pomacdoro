@@ -17,6 +17,9 @@ final class StatusItemController {
     }
 
     private var buttonTarget: ButtonTarget?
+    /// Drawing the clock is the expensive part of an update, and it only depends
+    /// on the phase and the appearance, not on the countdown that drives updates.
+    private var cachedIcon: (phase: Phase, appearance: NSAppearance.Name, image: NSImage)?
 
     func update(phase: Phase, countdown: String, isPaused: Bool) {
         guard let button = statusItem.button else { return }
@@ -28,13 +31,25 @@ final class StatusItemController {
             attributes: [.font: font]
         )
 
-        let image = clockIcon(for: phase)
+        let image = icon(for: phase, appearance: button.effectiveAppearance)
         image.accessibilityDescription = "\(phase.label) \(countdown)"
         button.image = image
 
         // A paused timer is dimmed so a stalled countdown is obvious at a glance.
         button.appearsDisabled = isPaused
         button.toolTip = "Pomacdoro: \(phase.label) \(countdown)"
+    }
+
+    /// Redraws only when the phase changes, or when the menu bar switches
+    /// between light and dark and the colour has to be resolved again.
+    private func icon(for phase: Phase, appearance: NSAppearance) -> NSImage {
+        let name = appearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
+        if let cached = cachedIcon, cached.phase == phase, cached.appearance == name {
+            return cached.image
+        }
+        let image = clockIcon(for: phase)
+        cachedIcon = (phase, name, image)
+        return image
     }
 
     private final class ButtonTarget: NSObject {
