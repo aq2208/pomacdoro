@@ -8,17 +8,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notifier = Notifier()
     private var statusItemController: StatusItemController?
     private let popover = NSPopover()
+    private var panel: NSHostingController<PopoverView>?
     private var observation: AnyObject?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let controller = StatusItemController { [weak self] in self?.togglePopover() }
         statusItemController = controller
 
-        popover.behavior = .transient  // closes when you click elsewhere
-        popover.contentSize = NSSize(width: 260, height: 300)
-        popover.contentViewController = NSHostingController(
+        let panel = NSHostingController(
             rootView: PopoverView(model: model, onQuit: { NSApp.terminate(nil) })
         )
+        self.panel = panel
+        popover.behavior = .transient  // closes when you click elsewhere
+        popover.contentViewController = panel
 
         model.onPhaseCompleted = { [weak self] finished, next in
             guard let self else { return }
@@ -49,6 +51,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            // Size to the content rather than a hardcoded height, so adding a row
+            // to the panel cannot leave the popover the wrong size.
+            if let panel {
+                popover.contentSize = panel.view.fittingSize
+            }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             // An accessory app is not active by default, so the panel needs focus
             // handed to it for the text fields and keyboard shortcuts to work.
