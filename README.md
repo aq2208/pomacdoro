@@ -2,16 +2,16 @@
 
 A native macOS Pomodoro timer that lives in your menu bar.
 
-<img src="docs/images/menubar-light.png" width="148" alt="Menu bar item, light">
-<img src="docs/images/menubar-dark.png" width="148" alt="Menu bar item, dark">
-
 The countdown is always on screen. Yellow while you focus, green while you rest.
 No tab to switch to, no window to raise, no phone to pick up.
 
-<img src="docs/images/panel.png" width="260" alt="The panel, mid focus session">
+<img src="docs/images/menubar-focus.png" width="305" alt="Focus session running in the menu bar">
+<img src="docs/images/menubar-rest.png" width="305" alt="Rest running in the menu bar">
 
 Click the item for the panel: countdown, Start, Pause, Reset, the three
 durations, and the sound for each transition.
+
+<img src="docs/images/panel.png" width="395" alt="The panel open below the menu bar">
 
 ## Install
 
@@ -55,8 +55,8 @@ build from source.
 
 `Sources/Pomacdoro/PomodoroCore.swift` holds the state machine and has no AppKit,
 so it is tested directly. `ClockIcon.swift` draws the clock for both the menu bar
-and the app icon, so the two cannot drift apart. `scripts/make-icon.swift` and
-`scripts/make-screenshots.swift` regenerate the logo and the images above.
+and the app icon, so the two cannot drift apart, and `scripts/make-icon.swift`
+turns it into the .icns.
 
 The build calls `swiftc` directly and joins the two architecture slices with
 `lipo`. Swift Package Manager is unusable here: some Command Line Tools
