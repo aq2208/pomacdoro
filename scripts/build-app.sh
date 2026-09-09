@@ -48,6 +48,9 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Copied files can carry extended attributes that codesign rejects outright.
 xattr -cr "$APP"
+# On a synced folder, xattr -c leaves com.apple.FinderInfo on the bundle
+# directory itself, and codesign refuses to sign anything carrying it.
+xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
 
 # An ad-hoc signature is what lets the bundle hold a stable identity, which
 # UserNotifications requires before it will deliver a banner.
