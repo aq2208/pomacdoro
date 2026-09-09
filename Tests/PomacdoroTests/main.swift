@@ -217,4 +217,62 @@ t.test("the session count is scoped to the day it was saved") {
     t.expectEqual(Settings.loadSessions(now: tomorrow), 0, "next day starts at zero")
 }
 
+t.test("the sound list is silence first, then names in alphabetical order") {
+    let available = SoundLibrary.available
+    t.expectEqual(available.first, SoundChoice.silent, "silence leads the list")
+    let names = Array(available.dropFirst())
+    t.expect(names.contains("Glass"), "expected the stock sounds, got \(names)")
+    t.expect(names.contains("Submarine"), "expected the stock sounds, got \(names)")
+    t.expectEqual(
+        names,
+        names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
+        "alphabetical"
+    )
+    t.expectEqual(names.count, Set(names).count, "no duplicates across sound folders")
+}
+
+t.test("a name found in an earlier folder wins over a later duplicate") {
+    let root = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("sounds-\(UUID().uuidString)")
+    let first = root.appendingPathComponent("first")
+    let second = root.appendingPathComponent("second")
+    for directory in [first, second] {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+    try Data().write(to: first.appendingPathComponent("Chime.aiff"))
+    try Data().write(to: second.appendingPathComponent("Chime.wav"))
+    try Data().write(to: second.appendingPathComponent(".hidden.aiff"))
+
+    let names = SoundLibrary.names(in: [first.path, second.path])
+    t.expectEqual(names, ["Chime"], "deduped, hidden files skipped")
+    try? FileManager.default.removeItem(at: root)
+}
+
+t.test("sound choices survive a save and load round trip") {
+    Settings.save(SoundChoice(focusEnd: "Submarine", restEnd: SoundChoice.silent))
+    let loaded = Settings.loadSounds()
+    t.expectEqual(loaded.focusEnd, "Submarine", "focus end")
+    t.expectEqual(loaded.restEnd, SoundChoice.silent, "rest end stays silent")
+}
+
+t.test("a sound that no longer exists falls back to the default") {
+    Settings.save(SoundChoice(focusEnd: "SoundThatWasDeleted", restEnd: "Ping"))
+    let loaded = Settings.loadSounds()
+    t.expectEqual(loaded.focusEnd, SoundChoice.default.focusEnd, "missing sound replaced")
+    t.expectEqual(loaded.restEnd, "Ping", "the valid one is kept")
+}
+
+t.test("unset sounds start at the documented defaults") {
+    UserDefaults.standard.removeObject(forKey: "focusEndSound")
+    UserDefaults.standard.removeObject(forKey: "restEndSound")
+    t.expectEqual(Settings.loadSounds(), SoundChoice.default, "defaults")
+}
+
+t.test("the right sound is picked for the phase that just ended") {
+    let choice = SoundChoice(focusEnd: "Glass", restEnd: "Hero")
+    t.expectEqual(choice.name(forEndOf: .focus), "Glass", "after focus")
+    t.expectEqual(choice.name(forEndOf: .shortRest), "Hero", "after a short rest")
+    t.expectEqual(choice.name(forEndOf: .longRest), "Hero", "after a long rest")
+}
+
 exit(t.finish())

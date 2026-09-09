@@ -12,6 +12,8 @@ struct PopoverView: View {
             Divider()
             durations
             Divider()
+            sounds
+            Divider()
             footer
         }
         .frame(width: 260)
@@ -49,6 +51,31 @@ struct PopoverView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private var sounds: some View {
+        VStack(spacing: 8) {
+            soundRow("Focus ends", value: $model.focusEndSound)
+            soundRow("Rest ends", value: $model.restEndSound)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    private func soundRow(_ label: String, value: Binding<String>) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12))
+            Spacer()
+            // Picking a sound plays it, which is the only way to judge one.
+            Picker("", selection: value) {
+                ForEach(SoundLibrary.available, id: \.self) { name in
+                    Text(SoundLibrary.label(for: name)).tag(name)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 118)
+        }
     }
 
     private func minuteRow(_ label: String, value: Binding<Int>) -> some View {

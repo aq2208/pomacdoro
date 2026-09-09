@@ -9,6 +9,7 @@ swiftc -O \
     -target arm64-apple-macos13.0 \
     -o build/PomacdoroTests \
     Sources/Pomacdoro/PomodoroCore.swift \
+    Sources/Pomacdoro/Sounds.swift \
     Sources/Pomacdoro/Settings.swift \
     Tests/PomacdoroTests/TestHarness.swift \
     Tests/PomacdoroTests/main.swift

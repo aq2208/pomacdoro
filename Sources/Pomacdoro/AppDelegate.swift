@@ -21,7 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         model.onPhaseCompleted = { [weak self] finished, next in
-            self?.notifier.announce(finished: finished, next: next)
+            guard let self else { return }
+            self.notifier.announce(finished: finished, next: next, sounds: self.model.sounds)
+        }
+        model.onPreviewSound = { [weak self] name in
+            self?.notifier.play(name)
         }
         notifier.requestAuthorization()
 

@@ -9,6 +9,8 @@ enum Settings {
         static let longRestEvery = "longRestEvery"
         static let sessions = "completedFocusSessions"
         static let sessionsDate = "completedFocusSessionsDate"
+        static let focusEndSound = "focusEndSound"
+        static let restEndSound = "restEndSound"
     }
 
     /// Clamped so a stepper or a hand-edited defaults entry cannot produce a zero-length phase.
@@ -34,6 +36,24 @@ enum Settings {
         defaults.set(durations.shortRestMinutes, forKey: Key.shortRest)
         defaults.set(durations.longRestMinutes, forKey: Key.longRest)
         defaults.set(durations.longRestEvery, forKey: Key.longRestEvery)
+    }
+
+    static func loadSounds() -> SoundChoice {
+        SoundChoice(
+            focusEnd: SoundLibrary.resolve(
+                defaults.string(forKey: Key.focusEndSound),
+                fallback: SoundChoice.default.focusEnd
+            ),
+            restEnd: SoundLibrary.resolve(
+                defaults.string(forKey: Key.restEndSound),
+                fallback: SoundChoice.default.restEnd
+            )
+        )
+    }
+
+    static func save(_ sounds: SoundChoice) {
+        defaults.set(sounds.focusEnd, forKey: Key.focusEndSound)
+        defaults.set(sounds.restEnd, forKey: Key.restEndSound)
     }
 
     /// The count is scoped to a calendar day, so "sessions" in the popover means today.

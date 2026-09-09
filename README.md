@@ -44,7 +44,8 @@ xattr -dr com.apple.quarantine /path/to/Pomacdoro.app
 
 The suite covers the timer state machine and the settings store: phase
 transitions, the long-rest cadence, pause and resume, expiry across a system
-sleep, countdown formatting, and the UserDefaults round trip.
+sleep, countdown formatting, sound selection and its fallbacks, and the
+UserDefaults round trip.
 
 ## How it works
 
@@ -60,6 +61,14 @@ The app icon, which is also what the notification banner carries, is the same
 clock in white on a tomato red plate. Both come from a single drawing routine in
 `ClockIcon.swift`, so the logo and the menu bar can never drift apart. The build
 re-renders `Resources/AppIcon.icns` whenever that drawing changes.
+
+The sound each transition plays is chosen in the panel, one for the end of a
+focus session and one for the end of a rest. The list is gathered from the three
+folders AppKit searches, so anything dropped into `~/Library/Sounds` shows up
+alongside the stock macOS sounds, and `None` leaves that transition silent.
+Picking a sound plays it straight away, since that is the only way to judge one.
+A sound that later goes missing falls back to the default rather than failing
+quietly.
 
 Durations are set in the panel, from 1 to 180 minutes each, and are saved
 immediately. A change takes effect the next time that phase comes around, so it
@@ -80,6 +89,7 @@ the following phase.
 | `Sources/Pomacdoro/StatusItemController.swift` | The menu bar item. |
 | `Sources/Pomacdoro/PopoverView.swift` | The SwiftUI panel. |
 | `Sources/Pomacdoro/Notifier.swift` | Sound and notification banner. |
+| `Sources/Pomacdoro/Sounds.swift` | The sound list and the per-phase choice. Foundation only, so it is testable. |
 | `Sources/Pomacdoro/ClockIcon.swift` | The clock drawing and the phase colours, shared by the menu bar and the logo. |
 | `Sources/Pomacdoro/Settings.swift` | The UserDefaults store, under `com.local.pomacdoro`. |
 | `scripts/make-icon.swift` | Renders the logo at every size and packs it into an .icns. |

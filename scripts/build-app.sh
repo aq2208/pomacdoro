@@ -11,8 +11,16 @@ APP="dist/Pomacdoro.app"
 MACOS_MIN="13.0"
 ARCHS="arm64 x86_64"   # universal, so the app runs on Apple silicon and Intel
 
-rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build
+# The bundle is assembled and signed in a temporary directory, then moved into
+# place. On a folder synced by iCloud Drive or similar, the sync agent stamps
+# com.apple.FinderInfo onto a newly appearing app bundle, and codesign refuses
+# to sign anything carrying that attribute. Staging outside the synced tree
+# avoids the race rather than trying to win it.
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+STAGED_APP="$STAGE/Pomacdoro.app"
+
+mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources" build
 
 # The logo is drawn from the same clock the menu bar uses, so it is re-rendered
 # whenever that drawing changes.
@@ -40,23 +48,25 @@ for arch in $ARCHS; do
 done
 
 # shellcheck disable=SC2086
-lipo -create $slices -output "$APP/Contents/MacOS/Pomacdoro"
-lipo -info "$APP/Contents/MacOS/Pomacdoro"
+lipo -create $slices -output "$STAGED_APP/Contents/MacOS/Pomacdoro"
+lipo -info "$STAGED_APP/Contents/MacOS/Pomacdoro"
 
-cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/Info.plist "$STAGED_APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$STAGED_APP/Contents/Resources/AppIcon.icns"
 
-# Copied files can carry extended attributes that codesign rejects outright.
-xattr -cr "$APP"
-# On a synced folder, xattr -c leaves com.apple.FinderInfo on the bundle
-# directory itself, and codesign refuses to sign anything carrying it.
-xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
+# Copied files can still carry extended attributes that codesign rejects.
+xattr -cr "$STAGED_APP"
 
 # An ad-hoc signature is what lets the bundle hold a stable identity, which
 # UserNotifications requires before it will deliver a banner.
 echo "Signing..."
-codesign --force --deep --sign - --identifier com.local.pomacdoro "$APP"
-codesign --verify --strict --verbose=1 "$APP"
+codesign --force --deep --sign - --identifier com.local.pomacdoro "$STAGED_APP"
+codesign --verify --strict --verbose=1 "$STAGED_APP"
+
+rm -rf "$APP"
+mkdir -p "$(dirname "$APP")"
+ditto "$STAGED_APP" "$APP"
+codesign --verify --verbose=1 "$APP"
 
 echo
 echo "Built $APP"

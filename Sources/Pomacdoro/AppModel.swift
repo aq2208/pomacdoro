@@ -14,8 +14,13 @@ final class AppModel: ObservableObject {
     @Published var shortRestMinutes: Int { didSet { applyDurations() } }
     @Published var longRestMinutes: Int { didSet { applyDurations() } }
 
+    @Published var focusEndSound: String { didSet { applySounds(changed: focusEndSound, was: oldValue) } }
+    @Published var restEndSound: String { didSet { applySounds(changed: restEndSound, was: oldValue) } }
+
     /// Fires on every phase transition so the delegate can alert the user.
     var onPhaseCompleted: ((Phase, Phase) -> Void)?
+    /// Plays a sound by name, so picking one in the panel can audition it.
+    var onPreviewSound: ((String) -> Void)?
 
     private let core: PomodoroCore
     private var ticker: Timer?
@@ -24,16 +29,23 @@ final class AppModel: ObservableObject {
 
     init() {
         let durations = Settings.loadDurations()
+        let sounds = Settings.loadSounds()
         let sessions = Settings.loadSessions()
         core = PomodoroCore(durations: durations, completedFocusSessions: sessions)
         focusMinutes = durations.focusMinutes
         shortRestMinutes = durations.shortRestMinutes
         longRestMinutes = durations.longRestMinutes
+        focusEndSound = sounds.focusEnd
+        restEndSound = sounds.restEnd
         self.sessions = sessions
         refresh(now: Date())
     }
 
     var isRunning: Bool { runState == .running }
+
+    var sounds: SoundChoice {
+        SoundChoice(focusEnd: focusEndSound, restEnd: restEndSound)
+    }
 
     var primaryButtonTitle: String {
         switch runState {
@@ -106,6 +118,13 @@ final class AppModel: ObservableObject {
         core.durations = durations
         Settings.save(durations)
         refresh(now: Date())
+    }
+
+    private func applySounds(changed: String, was previous: String) {
+        guard changed != previous else { return }
+        Settings.save(sounds)
+        // Audition the pick straight away; that is the only way to judge it.
+        onPreviewSound?(changed)
     }
 
     private func clamp(_ minutes: Int) -> Int {

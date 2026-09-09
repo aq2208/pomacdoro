@@ -26,8 +26,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    func announce(finished: Phase, next: Phase) {
-        playSound(for: finished)
+    func announce(finished: Phase, next: Phase, sounds: SoundChoice) {
+        play(sounds.name(forEndOf: finished))
         let title = finished == .focus ? "Focus finished" : "Break over"
         let body = next == .focus
             ? "Back to work. Focus session starting now."
@@ -35,9 +35,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         postBanner(title: title, body: body)
     }
 
-    private func playSound(for finished: Phase) {
-        // Distinct sounds so the phase you are entering is audible without looking.
-        let name = finished == .focus ? "Glass" : "Hero"
+    /// Also used to audition a sound as it is picked. An empty name is silence.
+    func play(_ name: String) {
+        guard !name.isEmpty else { return }
         NSSound(named: NSSound.Name(name))?.play()
     }
 
